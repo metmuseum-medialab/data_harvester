@@ -2,7 +2,7 @@
 http = require("http");
 http.globalAgent.maxSockets = 30; 
 //var fs = require("./node_modules/node-fs/lib/fs");
-var fs = require('fs');
+var fs = require('fs.extra');
 var jsdom = require("jsdom"); 
 $ = require("jquery")(jsdom.jsdom().createWindow()); 
 var request = require("request");
@@ -18,29 +18,25 @@ var oascMatch = /<a class="oasc" href="\/research\/image-resources" title="This 
 metRunner = require("./metRunner");
 
 var objectCallback = function(objectJson){
-	console.log("in objectCallback");
-	console.log(objectJson);
+//	console.log("in objectCallback");
+//	console.log(objectJson);
 	
 	// objectnumber
 
   // only do for OASC objects
 
 
-	var objectid = objectJson['id'];
+	var objectid = objectJson['CRDID'];
 
 	var filepath = "objects/"+objectid+".json";
 
 	fs.writeFile(filepath, JSON.stringify(objectJson, null, " "));
 
-  if(objectJson['image']){
+  if(objectJson['primaryImageUrl']){
+    console.log("*************************************** " + objectJson['primaryImageUrl']);
+    // do image stuff
   }
 
-  console.log(trips);
-
-  if(objectJson['Accession Number']){
-    var accProp = "http://data.metmuseum.org/rels#AccessionNumber";
-    trips.push(triplifyString(id, accProp,  objectJson['Accession Number']  ));
-  }
 
 }
 

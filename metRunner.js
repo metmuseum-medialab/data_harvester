@@ -26,14 +26,15 @@ finishedCallback : method to run when done.
 var jsdom = require("jsdom"); 
 $ = require("jquery")(jsdom.jsdom().createWindow()); 
 //var fs = require("./node_modules/node-fs/lib/fs");
-var fs = require("fs");
+var fs = require("fs.extra");
+
+var request = require("request");
 
 var crypto = require('crypto'); 
 
 if(typeof module !== 'undefined'){
 	// if we're running server-side, this stuff needs to happen.
 	module.exports.getMetRunner = getMetRunner;
-	var $ = require('jquery');
 	var jQuery = $;
 }else{
 	// we're running client-side, and need a different way to include the necessary code.
@@ -83,7 +84,7 @@ metRunner.prototype.runOnAllMetObjects = function(){
 
 
 metRunner.prototype.getMetObjectsPage = function(pageNumber){
-	var url = this.baseUrl + "ids?page=" + pageNumber + "&images=true";
+	var url = this.baseUrl + "search?page=" + pageNumber + "&images=true";
 	console.log("***" + url);
 	var realthis = this;
 //	console.log("calling objectlist url " + url);
@@ -119,7 +120,7 @@ metRunner.prototype.processMetList = function(idsList){
 	//	this.wait();
 
 	console.log("idslist ");
-	console.log(idsList.collection.items);
+	console.log(idsList);
 	if(idsList.collection.items.length == 0){
 		console.log("no objects on this page");
 		this.keepGettingPages = false;
@@ -142,8 +143,9 @@ metRunner.prototype.processMetList = function(idsList){
 metRunner.prototype.processMetObject = function (objectJson){
 
 	// call the callback
+	var realthis = this;
 	this.filterCallback(objectJson, function(objectJsonS){
-		this.objectCallback(objectJsonS);
+		realthis.objectCallback(objectJsonS);
 	},
 	function(objectJsonF){
 		//do nothing
@@ -164,10 +166,10 @@ metRunner.prototype.getFromCache = function(url){
 		// get data file and return;
 		var data = fs.readFileSync(path, {encoding: "utf-8"});
 		console.log("got data from cache");
-		console.log(data);
+		//console.log(data);
 		if (data.trim() == ""){return false;}
 		data =  JSON.parse(data);
-		console.log(data);
+		//console.log(data);
 
 		return data;
 	}
@@ -185,7 +187,7 @@ metRunner.prototype.storeToCache = function(url, data){
 	if(!fs.existsSync(dir)){
 
 //		console.log("dir " + dir + " not found");
-		fs.mkdirSync(dir, 0777, true);
+		fs.mkdirRecursiveSync(dir, 0777);
 	}
 	var filepath = this.urlToCacheHash(url);
 
@@ -269,23 +271,20 @@ metRunner.prototype.cacheProxy = function (url, callback) {
 	console.log("not in cache, getting data from url " +url);
 
 
-    $.ajax({
-		url : url,
-		error : function(retdata){
-			console.log("failure");
-			console.log(retdata);
-			realthis.pendingCalls--;
-		},
-		success : function (retdata){
+	request(url, function(error, response, body){
+		if (!error && response.statusCode == 200) {		
 			// console.log("|"+retdata+"|");
-
+			console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! success");
 			realthis.pendingCalls--;
+
+			var retdata = JSON.parse(body);
 
 			if(retdata == ''){
 				console.log("no results");
 
 		  		return true;
 			}
+
 //			console.log("parsing");
 //			console.log(retdata);
 //			retdata = JSON.parse(retdata);
@@ -299,6 +298,8 @@ metRunner.prototype.cacheProxy = function (url, callback) {
 			if(realthis.pendingCalls == 0){
 				realthis.finishedCallback();
 			}
+
 		}
 	});
+
 }
