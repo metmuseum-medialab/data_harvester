@@ -9,10 +9,11 @@ var request = require("request");
 console.log("trying to connect");
 //var db = new CouchDB("http://localhost:8088/localhost:5984","example", {"X-Couch-Full-Commit":"false"});
 
-fs.writeFileSync("triples.n3", "");
 
 var oascMatch = /<a class="oasc" href="\/research\/image-resources" title="This object is part of The Met's Open Access for Scholarly Content initiative.  Click here for additional information...">OASC<\/a>/;
 
+
+var imgUrlMatch = "http://images.metmuseum.org/CRDImages/";
 
 
 metRunner = require("./metRunner");
@@ -33,8 +34,24 @@ var objectCallback = function(objectJson){
 	fs.writeFile(filepath, JSON.stringify(objectJson, null, " "));
 
   if(objectJson['primaryImageUrl']){
+    var imageUrl = objectJson['primaryImageUrl'];
+    var writePath = imageUrl.replace(imgUrlMatch, "");
     console.log("*************************************** " + objectJson['primaryImageUrl']);
     // do image stuff
+
+    var dir = "images/"+ writePath.replace(/\/[^\/]+$/, "");
+    console.log(dir);
+
+    if(!fs.existsSync(dir)){
+
+  //    console.log("dir " + dir + " not found");
+      fs.mkdirRecursiveSync(dir, 0777);
+    }
+
+    // get image from local dirs
+
+
+
   }
 
 
