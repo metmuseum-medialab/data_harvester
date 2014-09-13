@@ -164,9 +164,9 @@ metRunner.prototype.getFromCache = function(url){
 		console.log(path);
 		this.fromCache++;
 		// get data file and return;
-		var data = fs.readFileSync(path, {encoding: "utf-8"});
+		var data = fs.readFileSync(path).toString();//, {encoding: "utf8"});
 		console.log("got data from cache");
-		//console.log(data);
+//		console.log(data);
 		if (data.trim() == ""){return false;}
 		data =  JSON.parse(data);
 		//console.log(data);

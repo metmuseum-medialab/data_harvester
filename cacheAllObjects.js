@@ -2,10 +2,13 @@
 http = require("http");
 http.globalAgent.maxSockets = 30; 
 //var fs = require("./node_modules/node-fs/lib/fs");
-var fs = require('fs.extra');
+var fsx = require('fs.extra');
+var fs = require("graceful-fs")
 var jsdom = require("jsdom"); 
 $ = require("jquery")(jsdom.jsdom().createWindow()); 
 var request = require("request");
+var xmlParse = require("xml2js").parseString
+var path = require("path");
 console.log("trying to connect");
 //var db = new CouchDB("http://localhost:8088/localhost:5984","example", {"X-Couch-Full-Commit":"false"});
 
@@ -29,33 +32,124 @@ var objectCallback = function(objectJson){
 
 	var objectid = objectJson['CRDID'];
 
-	var filepath = "objects/"+objectid+".json";
+  var filedir = "objects/"+objectid.toString().substr(0,1);
+  var filepath = filedir+ "/"+objectid+".json";
+  console.log("filedir: " + filedir);
+  if(!fs.existsSync(filedir)){
+  //    console.log("dir " + dir + " not found");
+      fsx.mkdirRecursiveSync(filedir, 0777);
+  }
+
+
+
+
+
 
 	fs.writeFile(filepath, JSON.stringify(objectJson, null, " "));
 
+
+  // get image data
+  // http://sgidevis00/MetDataService/MetData.asmx/getTmsPublicAccessMediaDataForObjectID?objectID=string
+
+  var serviceUrl = "http://sgidevis00/MetDataService/MetData.asmx/getTmsPublicAccessMediaDataForObjectID?objectID="
   if(objectJson['primaryImageUrl']){
+
+    // get local image data from MetDataService
+    var imageDataUrl = serviceUrl + objectid;
+
     var imageUrl = objectJson['primaryImageUrl'];
+
+    var imageFilename = path.basename(imageUrl);
+
     var writePath = imageUrl.replace(imgUrlMatch, "");
     console.log("*************************************** " + objectJson['primaryImageUrl']);
+    console.log("imageFilename" + imageFilename);
     // do image stuff
+    console.log("writepath : " + writePath);
+    var imageDestDir = "images/"+ writePath.replace(/\/[^\/]+$/, "");
+    console.log("imageDestDir: " + imageDestDir);
+    var imageDestPath = imageDestDir + "/"+imageFilename;
 
-    var dir = "images/"+ writePath.replace(/\/[^\/]+$/, "");
-    console.log(dir);
-
-    if(!fs.existsSync(dir)){
+    if(!fs.existsSync(imageDestDir)){
 
   //    console.log("dir " + dir + " not found");
-      fs.mkdirRecursiveSync(dir, 0777);
+      fsx.mkdirRecursiveSync(imageDestDir, 0777);
     }
 
-    // get image from local dirs
 
+
+
+    request(imageDataUrl, function(error, resp, body){
+      if(error){
+        console.log("in call to Met Page, got error" + error );
+        callback();     
+        return;
+      }
+
+      xmlParse(body,function(err, result){
+        if(err){
+          console.log("Error parsing xml ");
+          console.log(err);
+          console.log(body);
+          return;
+        }
+
+        console.log("xmlparsed: got xml to json");
+//        console.log(JSON.stringify(result));
+        for(var i = 0; i < result.results.result.length; i++){
+          var filedata = result.results.result[i];
+  //        console.log(JSON.stringify(filedata));
+          if(filedata.FileName == imageFilename){
+            console.log("FileName: " + filedata.FileName);
+            console.log("Path: " + filedata.Path);
+            console.log("PublicAccess: " + filedata.PublicAccess);
+            console.log("PrimaryDisplay: " + filedata.PrimaryDisplay);
+            var fromFile = filedata.Path + filedata.FileName;
+            var toFile = imageDestPath;
+            console.log("copying from " + fromFile + " to " + toFile);
+            copyFile (fromFile, toFile, function(err){
+              console.log("fileCopy Error " + err);
+            })
+          }
+        }
+      });
+    });
+/*
+
+    // get image from local dirs
+*/
 
 
   }
 
 
 }
+
+function copyFile(source, target, cb) {
+  var cbCalled = false;
+
+  var rd = fs.createReadStream(source);
+  rd.on("error", function(err) {
+    done("rd "  + err);
+  });
+  var wr = fs.createWriteStream(target);
+  wr.on("error", function(err) {
+    done("wr " + err);
+  });
+  wr.on("close", function(ex) {
+    done();
+  });
+  rd.pipe(wr);
+
+  function done(err) {
+    if (!cbCalled) {
+      cb(err + ": tofile " + target +  " source : " + source);
+      cbCalled = true;
+    }
+  }
+}
+
+
 
 var filterCallback = function(objectJson, successCallback, failureCallback){
 	console.log("in filterCallback");
